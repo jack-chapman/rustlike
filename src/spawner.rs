@@ -1,7 +1,7 @@
 use super::{
-  map::*, AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, InflictsDamage, Item,
-  Monster, Name, Player, Position, ProvidesHealing, RandomTable, Ranged, Rect, Renderable,
-  SerializeMe, Viewshed,
+  map::*, AreaOfEffect, BlocksTile, CombatStats, Confusion, Consumable, DefenseBonus, Equippable,
+  EqupimentSlot, InflictsDamage, Item, MeleePowerBonus, Monster, Name, Player, Position,
+  ProvidesHealing, RandomTable, Ranged, Rect, Renderable, SerializeMe, Viewshed,
 };
 use rltk::{RandomNumberGenerator, RGB};
 use specs::prelude::*;
@@ -9,6 +9,50 @@ use specs::saveload::{MarkedBuilder, SimpleMarker};
 use std::collections::HashMap;
 
 const MAX_MONSTERS: i32 = 4;
+
+pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
+  ecs
+    .create_entity()
+    .with(Position {
+      x: player_x,
+      y: player_y,
+    })
+    .with(Renderable {
+      glyph: rltk::to_cp437('@'),
+      fg: RGB::named(rltk::YELLOW),
+      bg: RGB::named(rltk::BLACK),
+      render_order: 0,
+    })
+    .with(Player {})
+    .with(Viewshed {
+      visible_tiles: Vec::new(),
+      range: 8,
+      dirty: true,
+    })
+    .with(Name {
+      name: "Player".to_string(),
+    })
+    .with(CombatStats {
+      max_hp: 30,
+      hp: 30,
+      defense: 2,
+      power: 5,
+    })
+    .marked::<SimpleMarker<SerializeMe>>()
+    .build()
+}
+
+fn room_table(map_depth: i32) -> RandomTable {
+  RandomTable::new()
+    .add("Goblin", 10)
+    .add("Orc", 1 + map_depth)
+    .add("Health Potion", 7)
+    .add("Fireball Scroll", 2 + map_depth)
+    .add("Confusion Scroll", 2 + map_depth)
+    .add("Magic Missile Scroll", 4)
+    .add("Dagger", 3)
+    .add("Shield", 3)
+}
 
 #[allow(clippy::map_entry)]
 pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
@@ -47,10 +91,14 @@ pub fn spawn_room(ecs: &mut World, room: &Rect, map_depth: i32) {
       "Fireball Scroll" => fireball_scroll(ecs, x, y),
       "Confusion Scroll" => confusion_scroll(ecs, x, y),
       "Magic Missile Scroll" => magic_missile_scroll(ecs, x, y),
+      "Dagger" => dagger(ecs, x, y),
+      "Shield" => shield(ecs, x, y),
       _ => {}
     }
   }
 }
+
+// Items
 
 pub fn health_potion(ecs: &mut World, x: i32, y: i32) {
   ecs
@@ -136,37 +184,7 @@ pub fn confusion_scroll(ecs: &mut World, x: i32, y: i32) {
     .build();
 }
 
-pub fn player(ecs: &mut World, player_x: i32, player_y: i32) -> Entity {
-  ecs
-    .create_entity()
-    .with(Position {
-      x: player_x,
-      y: player_y,
-    })
-    .with(Renderable {
-      glyph: rltk::to_cp437('@'),
-      fg: RGB::named(rltk::YELLOW),
-      bg: RGB::named(rltk::BLACK),
-      render_order: 0,
-    })
-    .with(Player {})
-    .with(Viewshed {
-      visible_tiles: Vec::new(),
-      range: 8,
-      dirty: true,
-    })
-    .with(Name {
-      name: "Player".to_string(),
-    })
-    .with(CombatStats {
-      max_hp: 30,
-      hp: 30,
-      defense: 2,
-      power: 5,
-    })
-    .marked::<SimpleMarker<SerializeMe>>()
-    .build()
-}
+// Monsters
 
 fn orc(ecs: &mut World, x: i32, y: i32) {
   monster(ecs, x, y, rltk::to_cp437('o'), "Orc");
@@ -205,12 +223,48 @@ fn monster<S: ToString>(ecs: &mut World, x: i32, y: i32, glyph: rltk::FontCharTy
     .build();
 }
 
-fn room_table(map_depth: i32) -> RandomTable {
-  RandomTable::new()
-    .add("Goblin", 10)
-    .add("Orc", 1 + map_depth)
-    .add("Health Potion", 7)
-    .add("Fireball Scroll", 2 + map_depth)
-    .add("Confusion Scroll", 2 + map_depth)
-    .add("Magic Missile Scroll", 4)
+// Equipment
+
+fn dagger(ecs: &mut World, x: i32, y: i32) {
+  ecs
+    .create_entity()
+    .with(Position { x, y })
+    .with(Renderable {
+      glyph: rltk::to_cp437('/'),
+      fg: RGB::named(rltk::CYAN),
+      bg: RGB::named(rltk::BLACK),
+      render_order: 2,
+    })
+    .with(Name {
+      name: "Dagger".to_string(),
+    })
+    .with(Item {})
+    .with(Equippable {
+      slot: EqupimentSlot::Melee,
+    })
+    .with(MeleePowerBonus { power: 2 })
+    .marked::<SimpleMarker<SerializeMe>>()
+    .build();
+}
+
+fn shield(ecs: &mut World, x: i32, y: i32) {
+  ecs
+    .create_entity()
+    .with(Position { x, y })
+    .with(Renderable {
+      glyph: rltk::to_cp437('('),
+      fg: RGB::named(rltk::CYAN),
+      bg: RGB::named(rltk::BLACK),
+      render_order: 2,
+    })
+    .with(Name {
+      name: "Shield".to_string(),
+    })
+    .with(Item {})
+    .with(Equippable {
+      slot: EqupimentSlot::Shield,
+    })
+    .with(DefenseBonus { defense: 1 })
+    .marked::<SimpleMarker<SerializeMe>>()
+    .build();
 }
