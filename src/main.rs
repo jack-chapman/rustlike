@@ -27,6 +27,7 @@ mod gui;
 mod inventory_system;
 mod spawner;
 use inventory_system::{ItemCollectionSystem, ItemDropSystem, ItemRemoveSystem, ItemUseSystem};
+mod particle_system;
 mod random_table;
 mod saveload_system;
 pub use random_table::*;
@@ -76,6 +77,8 @@ impl State {
         drop_items.run_now(&self.ecs);
         let mut item_remove = ItemRemoveSystem {};
         item_remove.run_now(&self.ecs);
+        let mut particles = particle_system::ParticleSpawnSystem {};
+        particles.run_now(&self.ecs);
 
         self.ecs.maintain();
     }
@@ -84,6 +87,7 @@ impl State {
 impl GameState for State {
     fn tick(&mut self, ctx: &mut Rltk) {
         ctx.cls();
+        particle_system::cull_dead_particles(&mut self.ecs, ctx);
         let mut newrunstate;
         {
             let runstate = self.ecs.fetch::<RunState>();
@@ -431,6 +435,7 @@ fn main() -> rltk::BError {
     gs.ecs.register::<Equipped>();
     gs.ecs.register::<MeleePowerBonus>();
     gs.ecs.register::<DefenseBonus>();
+    gs.ecs.register::<ParticleLifetime>();
     gs.ecs.register::<SimpleMarker<SerializeMe>>();
     gs.ecs.register::<SerializationHelper>();
 
@@ -455,5 +460,8 @@ fn main() -> rltk::BError {
     gs.ecs.insert(gamelog::GameLog {
         entries: vec!["Welcome to Rustlike".to_string()],
     });
+
+    gs.ecs.insert(particle_system::ParticleBuilder::new());
+
     rltk::main_loop(context, gs)
 }
