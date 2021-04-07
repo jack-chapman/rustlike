@@ -1,6 +1,6 @@
 use super::{
-  gamelog::GameLog, CombatStats, Item, Map, Monster, Player, Position, RunState, State, TileType,
-  Viewshed, WantsToMelee, WantsToPickupItem,
+  gamelog::GameLog, CombatStats, HungerClock, HungerState, Item, Map, Monster, Player, Position,
+  RunState, State, TileType, Viewshed, WantsToMelee, WantsToPickupItem,
 };
 use rltk::{Point, Rltk, VirtualKeyCode};
 use specs::prelude::*;
@@ -153,6 +153,17 @@ pub fn skip_turn(ecs: &mut World) -> RunState {
   let worldmap_resource = ecs.fetch::<Map>();
 
   let mut can_heal = true;
+
+  let hunger_clocks = ecs.read_storage::<HungerClock>();
+  let hc = hunger_clocks.get(*player_entity);
+  if let Some(hc) = hc {
+    match hc.state {
+      HungerState::Hungry => can_heal = false,
+      HungerState::Starving => can_heal = false,
+      _ => {}
+    }
+  }
+
   let viewshed = viewshed_components.get(*player_entity).unwrap();
   for tile in viewshed.visible_tiles.iter() {
     let idx = worldmap_resource.xy_idz(tile.x, tile.y);
