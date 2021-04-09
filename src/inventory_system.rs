@@ -1,8 +1,8 @@
 use super::{
   gamelog::GameLog, particle_system::ParticleBuilder, AreaOfEffect, CombatStats, Confusion,
-  Consumable, Equippable, Equipped, HungerClock, HungerState, InBackpack, InflictsDamage, Map,
-  Name, Position, ProvidesFood, ProvidesHealing, SufferDamage, WantsToDropItem, WantsToPickupItem,
-  WantsToRemoveItem, WantsToUseItem,
+  Consumable, Equippable, Equipped, HungerClock, HungerState, InBackpack, InflictsDamage,
+  MagicMapper, Map, Name, Position, ProvidesFood, ProvidesHealing, RunState, SufferDamage,
+  WantsToDropItem, WantsToPickupItem, WantsToRemoveItem, WantsToUseItem,
 };
 use specs::prelude::*;
 
@@ -51,13 +51,14 @@ impl<'a> System<'a> for ItemUseSystem {
   type SystemData = (
     ReadExpect<'a, Entity>,
     WriteExpect<'a, GameLog>,
-    ReadExpect<'a, Map>,
+    WriteExpect<'a, Map>,
     Entities<'a>,
     WriteStorage<'a, WantsToUseItem>,
     ReadStorage<'a, Name>,
     ReadStorage<'a, Consumable>,
     ReadStorage<'a, ProvidesHealing>,
     ReadStorage<'a, ProvidesFood>,
+    ReadStorage<'a, MagicMapper>,
     ReadStorage<'a, InflictsDamage>,
     WriteStorage<'a, CombatStats>,
     WriteStorage<'a, HungerClock>,
@@ -69,6 +70,7 @@ impl<'a> System<'a> for ItemUseSystem {
     WriteStorage<'a, InBackpack>,
     WriteExpect<'a, ParticleBuilder>,
     ReadStorage<'a, Position>,
+    WriteExpect<'a, RunState>,
   );
 
   fn run(&mut self, data: Self::SystemData) {
@@ -82,6 +84,7 @@ impl<'a> System<'a> for ItemUseSystem {
       consumables,
       healing,
       provides_food,
+      magic_mapper,
       inflict_damage,
       mut combat_stats,
       mut hunger_clocks,
@@ -93,6 +96,7 @@ impl<'a> System<'a> for ItemUseSystem {
       mut backpack,
       mut particle_builder,
       positions,
+      mut runstate,
     ) = data;
 
     for (entity, useitem) in (&entities, &wants_use).join() {
@@ -258,6 +262,18 @@ impl<'a> System<'a> for ItemUseSystem {
               names.get(useitem.item).unwrap().name
             ));
           }
+        }
+      }
+
+      let is_mapper = magic_mapper.get(useitem.item);
+      match is_mapper {
+        None => {}
+        Some(_) => {
+          used_item = true;
+          gamelog
+            .entries
+            .push("The map is revealed to you!".to_string());
+          *runstate = RunState::MagicMapReveal { row: 0 };
         }
       }
 

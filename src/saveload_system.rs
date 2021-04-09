@@ -70,6 +70,7 @@ pub fn save_game(ecs: &mut World) {
       ParticleLifetime,
       HungerClock,
       ProvidesFood,
+      MagicMapper,
       SerializationHelper
     );
   }
@@ -149,6 +150,7 @@ pub fn load_game(ecs: &mut World) {
       ParticleLifetime,
       HungerClock,
       ProvidesFood,
+      MagicMapper,
       SerializationHelper
     );
   }
